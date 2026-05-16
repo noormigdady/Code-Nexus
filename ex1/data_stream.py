@@ -1,28 +1,28 @@
 from abc import ABC, abstractmethod
-import typing
+from typing import Any
 
 
 class DataProcessor(ABC):
     def __init__(self) -> None:
-        self.data: list[tuple[int, typing.Any]] = []
+        self.data: list[tuple[int, Any]] = []
         self.rank: int = 0
 
     @abstractmethod
-    def validate(self, data: typing.Any) -> bool:
+    def validate(self, data: Any) -> bool:
         pass
 
     @abstractmethod
-    def ingest(self, data: typing.Any) -> None:
+    def ingest(self, data: Any) -> None:
         pass
 
-    def output(self) -> tuple[int, typing.Any]:
+    def output(self) -> tuple[int, Any]:
         if len(self.data) == 0:
             raise Exception("No data to be extracted!")
         return self.data.pop(0)
 
 
 class NumericProcessor(DataProcessor):
-    def validate(self, data: typing.Any) -> bool:
+    def validate(self, data: Any) -> bool:
         if type(data) in [int, float]:
             return True
         if isinstance(data, list):
@@ -48,7 +48,7 @@ class NumericProcessor(DataProcessor):
 
 
 class TextProcessor(DataProcessor):
-    def validate(self, data: typing.Any) -> bool:
+    def validate(self, data: Any) -> bool:
         if type(data) is str:
             return True
         if type(data) is list:
@@ -74,10 +74,12 @@ class TextProcessor(DataProcessor):
 
 
 class LogProcessor(DataProcessor):
-    def validate(self, data: typing.Any) -> bool:
+    def validate(self, data: Any) -> bool:
         if type(data) is dict:
             for k, v in data.items():
                 if type(k) is not str or type(v) is not str:
+                    return False
+                if k != "log_level" and k != "log_message":
                     return False
             return True
         if type(data) is list:
@@ -86,6 +88,8 @@ class LogProcessor(DataProcessor):
                     return False
                 for k, v in s.items():
                     if type(k) is not str or type(v) is not str:
+                        return False
+                    if k != "log_level" and k != "log_message":
                         return False
             return True
         return False
@@ -105,14 +109,14 @@ class LogProcessor(DataProcessor):
             print(e)
 
 
-class DataStream:
+class DataStream():
     def __init__(self):
-        self.processors = []
+        self.processors: list[DataStream] = []
 
     def register_processor(self, proc: DataProcessor) -> None:
         self.processors.append(proc)
 
-    def process_stream(self, stream: list[typing.Any]) -> None:
+    def process_stream(self, stream: list[Any]) -> None:
         try:
             for element in stream:
                 handled = False
@@ -122,7 +126,8 @@ class DataStream:
                         handled = True
                         break
             if not handled:
-                raise Exception(f"DataStream error - Can't process element in stream: {element}")
+                raise Exception(f"DataStream error -"
+                                f" Can't process element in stream: {element}")
         except Exception as e:
             print(e)
 
@@ -132,4 +137,40 @@ class DataStream:
             print("No processor found, no data")
             return
         for proc in self.processors:
-            name = type(proc)
+            name = type(proc).__name__
+            print(f"{name}: total {proc.rank} items processed,"
+                  f" remaining {len(proc.data)} on processor")
+            print()
+
+
+def main() -> None:
+    print("=== Code Nexus - Data Stream ===")
+    print("\nInitialize Data Stream...")
+    stream = DataStream()
+    stream.print_processors_stats()
+
+    print("Registering Numeric Processor")
+    numeric = NumericProcessor()
+    stream.register_processor(numeric)
+    my_lst = ["Hello world", [3.14, -1, 2.71], [
+        {
+            "log_level": "WARNING",
+            "log_message": "Telnet access! Use ssh instead"
+        },
+        {
+            "log_level": "INFO",
+            "log_message": "User wil is connected"
+
+        }
+    ], 42, ["Hi", "Five"]]
+    print(f"Send first batch of data on stream: {my_lst}")
+    stream.process_stream(my_lst)
+    stream.print_processors_stats()
+
+    print("\nRegistering other data processors")
+    print("Send the same batch again")
+    stream.process_stream(my_lst)
+
+
+if __name__ == "__main__":
+    main()

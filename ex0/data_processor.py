@@ -1,28 +1,28 @@
 from abc import ABC, abstractmethod
-import typing
+from typing import Any
 
 
 class DataProcessor(ABC):
     def __init__(self) -> None:
-        self.data: list[tuple[int, typing.Any]] = []
+        self.data: list[tuple[int, Any]] = []
         self.rank: int = 0
 
     @abstractmethod
-    def validate(self, data: typing.Any) -> bool:
+    def validate(self, data: Any) -> bool:
         pass
 
     @abstractmethod
-    def ingest(self, data: typing.Any) -> None:
+    def ingest(self, data: Any) -> None:
         pass
 
-    def output(self) -> tuple[int, typing.Any]:
+    def output(self) -> tuple[int, Any]:
         if len(self.data) == 0:
             raise Exception("No data to be extracted!")
         return self.data.pop(0)
 
 
 class NumericProcessor(DataProcessor):
-    def validate(self, data: typing.Any) -> bool:
+    def validate(self, data: Any) -> bool:
         if type(data) in [int, float]:
             return True
         if isinstance(data, list):
@@ -48,7 +48,7 @@ class NumericProcessor(DataProcessor):
 
 
 class TextProcessor(DataProcessor):
-    def validate(self, data: typing.Any) -> bool:
+    def validate(self, data: Any) -> bool:
         if type(data) is str:
             return True
         if type(data) is list:
@@ -74,10 +74,12 @@ class TextProcessor(DataProcessor):
 
 
 class LogProcessor(DataProcessor):
-    def validate(self, data: typing.Any) -> bool:
+    def validate(self, data: Any) -> bool:
         if type(data) is dict:
             for k, v in data.items():
                 if type(k) is not str or type(v) is not str:
+                    return False
+                if k != "log_level" and k != "log_message":
                     return False
             return True
         if type(data) is list:
@@ -86,6 +88,8 @@ class LogProcessor(DataProcessor):
                     return False
                 for k, v in s.items():
                     if type(k) is not str or type(v) is not str:
+                        return False
+                    if k != "log_level" and k != "log_message":
                         return False
             return True
         return False
@@ -112,7 +116,7 @@ def main() -> None:
     obj1 = NumericProcessor()
     lst_num: list[int | float] = [1, 2, 3, 4, 5]
 
-    print(f"Trying to validate input '42' : {obj1.validate(42)}")
+    print(f"Trying to validate input '42' : {obj1.validate(False)}")
     print(f"Trying to validate input 'Hello' : {obj1.validate("Hello")}")
     print("Test invalid ingestion of string 'foo' without prior validation:")
     print("Got exception: ", end="")
@@ -123,6 +127,7 @@ def main() -> None:
         obj1.ingest(lst_num)
     else:
         print("Invalid data!")
+
     print("Extracting 3 values...")
     try:
         for i in range(3):
@@ -148,7 +153,7 @@ def main() -> None:
     print("Extracting 1 value...")
     try:
         rank, item = obj2.output()
-        print(f"Extracting {rank}: {item}")
+        print(f"Text value {rank}: {item}")
     except Exception as e:
         print(e)
 
@@ -167,11 +172,14 @@ def main() -> None:
     print(f"Trying to validate input 'Hello': {obj3.validate("Hello")}")
     print(f"Trying to validate input 'Hello : world': "
           f"{obj3.validate({"Hello": "world"})}")
+
+    print(f"Trying to validate input 'log_level' : 'Error': "
+          f"{obj3.validate({"log_level": "Error"})}")
     print("Test invalid ingestion of string '42 Irbid' without validation:")
     print("Got exception: ", end="")
     obj3.ingest("42 Irbid")
-    print(f"Processing data: {lst_dict}")
 
+    print(f"Processing data: {lst_dict}")
     if obj3.validate(lst_dict):
         obj3.ingest(lst_dict)
     else:
@@ -186,7 +194,6 @@ def main() -> None:
                   f"{log.get("log_message")}")
     except Exception as e:
         print(e)
-
 
 if __name__ == "__main__":
     main()
