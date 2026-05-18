@@ -110,26 +110,23 @@ class LogProcessor(DataProcessor):
 
 
 class DataStream():
-    def __init__(self):
-        self.processors: list[DataStream] = []
+    def __init__(self) -> None:
+        self.processors: list[DataProcessor] = []
 
     def register_processor(self, proc: DataProcessor) -> None:
         self.processors.append(proc)
 
     def process_stream(self, stream: list[Any]) -> None:
-        try:
-            for element in stream:
-                handled = False
-                for proc in self.processors:
-                    if proc.validate(element):
-                        proc.ingest(element)
-                        handled = True
-                        break
+        for element in stream:
+            handled = False
+            for proc in self.processors:
+                if proc.validate(element):
+                    proc.ingest(element)
+                    handled = True
+                    break
             if not handled:
-                raise Exception(f"DataStream error -"
-                                f" Can't process element in stream: {element}")
-        except Exception as e:
-            print(e)
+                print(f"DataStream error -"
+                      f" Can't process element in stream: {element}")
 
     def print_processors_stats(self) -> None:
         print("== DataStream statistics ==")
@@ -140,7 +137,6 @@ class DataStream():
             name = type(proc).__name__
             print(f"{name}: total {proc.rank} items processed,"
                   f" remaining {len(proc.data)} on processor")
-            print()
 
 
 def main() -> None:
@@ -149,7 +145,7 @@ def main() -> None:
     stream = DataStream()
     stream.print_processors_stats()
 
-    print("Registering Numeric Processor")
+    print("\nRegistering Numeric Processor\n")
     numeric = NumericProcessor()
     stream.register_processor(numeric)
     my_lst = ["Hello world", [3.14, -1, 2.71], [
@@ -168,8 +164,23 @@ def main() -> None:
     stream.print_processors_stats()
 
     print("\nRegistering other data processors")
+    text = TextProcessor()
+    log = LogProcessor()
+    stream.register_processor(text)
+    stream.register_processor(log)
     print("Send the same batch again")
     stream.process_stream(my_lst)
+    stream.print_processors_stats()
+    print()
+
+    print("Consume some elements from the data processors:"
+          " Numeric 3, Text 2, Log 1")
+    for _ in range(3):
+        numeric.output()
+    for _ in range(2):
+        text.output()
+    log.output()
+    stream.print_processors_stats()
 
 
 if __name__ == "__main__":
