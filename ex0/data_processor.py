@@ -33,18 +33,15 @@ class NumericProcessor(DataProcessor):
         return False
 
     def ingest(self, data: int | float | list[int | float]) -> None:
-        try:
-            if not self.validate(data):
-                raise ValueError("Improper numeric data")
-            if isinstance(data, list):
-                for i in data:
-                    self.data.append((self.rank, str(i)))
-                    self.rank += 1
-            else:
-                self.data.append((self.rank, str(data)))
+        if not self.validate(data):
+            raise ValueError("Improper numeric data")
+        if isinstance(data, list):
+            for i in data:
+                self.data.append((self.rank, str(i)))
                 self.rank += 1
-        except ValueError as e:
-            print(e)
+        else:
+            self.data.append((self.rank, str(data)))
+            self.rank += 1
 
 
 class TextProcessor(DataProcessor):
@@ -59,18 +56,15 @@ class TextProcessor(DataProcessor):
         return False
 
     def ingest(self, data: str | list[str]) -> None:
-        try:
-            if not self.validate(data):
-                raise ValueError("Improper string data")
-            if type(data) is str:
-                self.data.append((self.rank, data))
+        if not self.validate(data):
+            raise ValueError("Improper string data")
+        if type(data) is str:
+            self.data.append((self.rank, data))
+            self.rank += 1
+        else:
+            for s in data:
+                self.data.append((self.rank, s))
                 self.rank += 1
-            else:
-                for s in data:
-                    self.data.append((self.rank, s))
-                    self.rank += 1
-        except ValueError as e:
-            print(e)
 
 
 class LogProcessor(DataProcessor):
@@ -95,18 +89,17 @@ class LogProcessor(DataProcessor):
         return False
 
     def ingest(self, data: dict[str, str] | list[dict[str, str]]) -> None:
-        try:
-            if not self.validate(data):
-                raise ValueError("Improper Log data")
-            if type(data) is dict:
-                self.data.append((self.rank, data))
-                self.rank += 1
-            else:
-                for s in data:
-                    self.data.append((self.rank, s))
-                    self.rank += 1
-        except ValueError as e:
-            print(e)
+        if not self.validate(data):
+            raise ValueError("Improper Log data")
+        entries: list[dict[str, str]]
+        if isinstance(data, dict):
+            entries = [data]
+        else:
+            entries = data
+        for entry in entries:
+            formatted = f"{entry['log_level']}: {entry['log_message']}"
+            self.data.append((self.rank, formatted))
+            self.rank += 1
 
 
 def main() -> None:
@@ -116,11 +109,13 @@ def main() -> None:
     obj1 = NumericProcessor()
     lst_num: list[int | float] = [1, 2, 3, 4, 5]
 
-    print(f"Trying to validate input '42' : {obj1.validate(False)}")
+    print(f"Trying to validate input '42' : {obj1.validate(42)}")
     print(f"Trying to validate input 'Hello' : {obj1.validate("Hello")}")
     print("Test invalid ingestion of string 'foo' without prior validation:")
-    print("Got exception: ", end="")
-    obj1.ingest("foo")
+    try:
+        obj1.ingest("foo")
+    except ValueError as e:
+        print(f"Got exception {e}")
 
     print(f"Processing data: {lst_num}")
     if obj1.validate(lst_num):
@@ -143,8 +138,11 @@ def main() -> None:
     print(f"Trying to validate input ’42’: {obj2.validate(42)}")
     print(f"Trying to validate input ’Hello’: {obj2.validate("Hello")}")
     print("Test invalid ingestion of number '100' without prior validation:")
-    print("Got exception: ", end="")
-    obj2.ingest(100)
+    try:
+        obj2.ingest(100)
+    except ValueError as e:
+        print(f"Got exception {e}")
+
     print(f"Processing data: {lst_str}")
     if obj2.validate(lst_str):
         obj2.ingest(lst_str)
@@ -176,22 +174,21 @@ def main() -> None:
     print(f"Trying to validate input 'log_level' : 'Error': "
           f"{obj3.validate({"log_level": "Error"})}")
     print("Test invalid ingestion of string '42 Irbid' without validation:")
-    print("Got exception: ", end="")
-    obj3.ingest("42 Irbid")
+    try:
+        obj3.ingest("42 Irbid")
+    except ValueError as e:
+        print(f"Got exception: {e}")
 
     print(f"Processing data: {lst_dict}")
     if obj3.validate(lst_dict):
         obj3.ingest(lst_dict)
     else:
         print("Invalid data")
-    print("Extracting 2 value...")
+    print("Extracting 2 values...")
     try:
         for _ in range(2):
-            out = obj3.output()
-            rank = out[0]
-            log = out[1]
-            print(f"Log entery {rank}: {log.get("log_level")}: "
-                  f"{log.get("log_message")}")
+            rank, item = obj3.output()
+            print(f"Log entry {rank}:  {item}")
     except Exception as e:
         print(e)
 

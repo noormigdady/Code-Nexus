@@ -33,18 +33,15 @@ class NumericProcessor(DataProcessor):
         return False
 
     def ingest(self, data: int | float | list[int | float]) -> None:
-        try:
-            if not self.validate(data):
-                raise ValueError("Improper numeric data")
-            if isinstance(data, list):
-                for i in data:
-                    self.data.append((self.rank, str(i)))
-                    self.rank += 1
-            else:
-                self.data.append((self.rank, str(data)))
+        if not self.validate(data):
+            raise ValueError("Improper numeric data")
+        if isinstance(data, list):
+            for i in data:
+                self.data.append((self.rank, str(i)))
                 self.rank += 1
-        except ValueError as e:
-            print(e)
+        else:
+            self.data.append((self.rank, str(data)))
+            self.rank += 1
 
 
 class TextProcessor(DataProcessor):
@@ -59,18 +56,15 @@ class TextProcessor(DataProcessor):
         return False
 
     def ingest(self, data: str | list[str]) -> None:
-        try:
-            if not self.validate(data):
-                raise ValueError("Improper string data")
-            if type(data) is str:
-                self.data.append((self.rank, data))
+        if not self.validate(data):
+            raise ValueError("Improper string data")
+        if type(data) is str:
+            self.data.append((self.rank, data))
+            self.rank += 1
+        else:
+            for s in data:
+                self.data.append((self.rank, s))
                 self.rank += 1
-            else:
-                for s in data:
-                    self.data.append((self.rank, s))
-                    self.rank += 1
-        except ValueError as e:
-            print(e)
 
 
 class LogProcessor(DataProcessor):
@@ -95,18 +89,17 @@ class LogProcessor(DataProcessor):
         return False
 
     def ingest(self, data: dict[str, str] | list[dict[str, str]]) -> None:
-        try:
-            if not self.validate(data):
-                raise ValueError("Improper Log data")
-            if type(data) is dict:
-                self.data.append((self.rank, data))
-                self.rank += 1
-            else:
-                for s in data:
-                    self.data.append((self.rank, s))
-                    self.rank += 1
-        except ValueError as e:
-            print(e)
+        if not self.validate(data):
+            raise ValueError("Improper Log data")
+        entries: list[dict[str, str]]
+        if isinstance(data, dict):
+            entries = [data]
+        else:
+            entries = data
+        for entry in entries:
+            formatted = f"{entry['log_level']}: {entry['log_message']}"
+            self.data.append((self.rank, formatted))
+            self.rank += 1
 
 
 class DataStream():
