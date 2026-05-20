@@ -70,22 +70,21 @@ class TextProcessor(DataProcessor):
 class LogProcessor(DataProcessor):
     def validate(self, data: Any) -> bool:
         if type(data) is dict:
-            for k, v in data.items():
-                if type(k) is not str or type(v) is not str:
-                    return False
-                if k != "log_level" and k != "log_message":
-                    return False
-            return True
+            return (
+                "log_level" in data
+                and "log_message" in data
+                and isinstance(data["log_level"], str)
+                and isinstance(data["log_message"], str)
+            )
         if type(data) is list:
-            for s in data:
-                if type(s) is not dict:
-                    return False
-                for k, v in s.items():
-                    if type(k) is not str or type(v) is not str:
-                        return False
-                    if k != "log_level" and k != "log_message":
-                        return False
-            return True
+            return all(
+                isinstance(d, dict)
+                and "log_level" in d
+                and "log_message" in d
+                and isinstance(d["log_level"], str)
+                and isinstance(d["log_message"], str)
+                for d in data
+            )
         return False
 
     def ingest(self, data: dict[str, str] | list[dict[str, str]]) -> None:
@@ -171,8 +170,8 @@ def main() -> None:
     print(f"Trying to validate input 'Hello : world': "
           f"{obj3.validate({"Hello": "world"})}")
 
-    print(f"Trying to validate input 'log_level' : 'Error': "
-          f"{obj3.validate({"log_level": "Error"})}")
+    print(f"Trying to validate input 'log_level' : 'Error', 'log_message':'mm'"
+          f": {obj3.validate({"log_level": "Error", "log_message": "mm"})}")
     print("Test invalid ingestion of string '42 Irbid' without validation:")
     try:
         obj3.ingest("42 Irbid")
